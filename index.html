@@ -202,7 +202,7 @@
   </header>
   <div class="tag-row">
     <span class="tag cyan">Empresa fija: 04 — CNEL Guayaquil</span>
-    <span class="tag">Manual MAE V.2</span>
+    <span class="tag">Manual MAE V.3</span>
     <span class="tag" id="topoCount">357 elementos de topología</span>
   </div>
 
@@ -225,7 +225,7 @@
     </div>
     <div class="field" style="margin-top:2px;">
       <label for="companyExtra">Complemento libre para Company (opcional)</label>
-      <input type="text" id="companyExtra" placeholder="Ej: sector Bastión Popular">
+      <input type="text" id="companyExtra" value="CNEL Guayaquil">
       <div class="hint">Se agrega después de un espacio, tras el nombre homologado.</div>
     </div>
   </div>
@@ -264,10 +264,10 @@
       <label for="areaSel">Área del encargado de Trabajos</label>
       <select id="areaSel">
         <option value="" selected disabled>-- Seleccione un área --</option>
-        <option value="Redes -Operaciones">Redes -Operaciones</option>
+        <option value="Redes-Operaciones">Redes-Operaciones</option>
         <option value="Subestaciones">Subestaciones</option>
         <option value="Mantenimiento de Redes">Mantenimiento de Redes</option>
-        <option value="Ingenieria y Construcciones">Ingenieria y Construcciones</option>
+        <option value="Ingeniería y Construcciones">Ingeniería y Construcciones</option>
       </select>
       <div class="hint">Se agrega al final de Purpose, después del resumen: "Area: {área}".</div>
     </div>
@@ -316,7 +316,7 @@
     <div class="checklist" id="checklist"></div>
 
     <details class="legend">
-      <summary>Referencia de códigos (Manual MAE V.2)</summary>
+      <summary>Referencia de códigos (Manual MAE V.3)</summary>
       <div class="legend-body">
         Company = <code>{empresa}_{elemento_ADMS} {complemento libre}</code> · Phone Number = <code>{teléfono} {nombre}</code> · Purpose = <code>{cod3}_{cod4} {resumen} Area: {área}</code> · Details = <code>1.RTEL_H</code> + descripción.
         <table class="codetbl">
@@ -327,12 +327,11 @@
           <tr><td>Red secundaria</td><td>RS-</td><td>Nombre de alimentador ADMS</td></tr>
           <tr><td>Transformador de Distribución</td><td>RPT</td><td>Nombre de alimentador ADMS al que pertenece</td></tr>
         </table>
-        <p class="warn">⚠ El manual PDF (Tabla 3) imprime <code>TMGF</code> para "LST Predictivo", pero el catálogo interno vigente usa <code>MPTG</code> (igual que en el resto de categorías). Esta app usa <code>MPTG</code> para ser consistente con el catálogo activo. Confírmalo con Control Nacional de Distribución si tienes dudas.</p>
       </div>
     </details>
   </div>
 
-  <footer class="foot">Corre 100% local en tu navegador — no envía información a ningún servidor. Datos de topología y catálogo tomados de tu archivo de homologación MAE.</footer>
+  <footer class="foot">Corre 100% local en tu navegador — no envía información a ningún servidor. Datos de topología y catálogo tomados de archivo de homologación MAE.</footer>
 </div>
 
 <script>
