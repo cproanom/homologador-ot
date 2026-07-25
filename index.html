@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Homologador OT · ADMS CNEL Guayaquil</title>
+<style>
+  :root{
+    --bg-0:#ffffff;
+    --bg-1:#eef8fd;
+    --bg-2:#daf0fb;
+    --panel:rgba(255,255,255,0.68);
+    --panel-solid:#ffffff;
+    --border:rgba(20,110,170,0.16);
+    --border-strong:rgba(14,143,184,0.40);
+    --text:#12324a;
+    --text-dim:#4d7089;
+    --text-faint:#7f9cb0;
+    --cyan:#0e8fb8;
+    --amber:#c9820a;
+    --amber-dim:#8a5a12;
+    --green:#1f9d55;
+    --red:#dc2626;
+    --mono: 'Cascadia Code','Consolas','SF Mono',Menlo,monospace;
+    --sans: 'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    font-family:var(--sans);
+    color:var(--text);
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(14,143,184,0.14), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(201,130,10,0.07), transparent 55%),
+      linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 45%, var(--bg-2) 100%);
+    position:relative;
+    overflow-x:hidden;
+  }
+
+  /* Circuit-grid texture overlay */
+  .grid-overlay{
+    position:fixed; inset:0; z-index:0; pointer-events:none; opacity:0.45;
+    background-image:
+      linear-gradient(rgba(20,110,170,0.09) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(20,110,170,0.09) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.15) 70%, transparent 100%);
+  }
+
+  /* Substation / transmission-tower skyline, fixed at the bottom */
+  .skyline{
+    position:fixed; left:0; right:0; bottom:0; height:min(34vh,300px);
+    z-index:0; pointer-events:none; opacity:0.5;
+  }
+  .skyline svg{width:100%;height:100%;display:block;}
+
+  .spark{
+    position:fixed; width:3px;height:3px;border-radius:50%;
+    background:var(--cyan); box-shadow:0 0 8px 2px var(--cyan);
+    opacity:0; z-index:1; pointer-events:none;
+    animation: spark-fade 3.2s ease-in-out infinite;
+  }
+  @keyframes spark-fade{
+    0%{opacity:0;} 8%{opacity:1;} 18%{opacity:0;} 100%{opacity:0;}
+  }
+
+  .wrap{position:relative;z-index:2;max-width:960px;margin:0 auto;padding:28px 20px 80px;}
+
+  header.top{display:flex;align-items:center;gap:16px;margin-bottom:6px;}
+  .bolt-badge{
+    width:52px;height:52px;border-radius:14px;flex:none;
+    background:linear-gradient(145deg, rgba(14,143,184,0.16), rgba(201,130,10,0.10));
+    border:1px solid var(--border-strong);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 24px rgba(14,143,184,0.18), inset 0 0 12px rgba(14,143,184,0.10);
+  }
+  .bolt-badge svg{width:28px;height:28px;}
+  h1{font-size:1.5rem;margin:0 0 2px;letter-spacing:0.2px;font-weight:600;color:#0f2a3f;}
+  .subtitle{font-size:0.86rem;color:var(--text-dim);margin:0;}
+  .tag-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .tag{
+    font-size:0.72rem;padding:3px 9px;border-radius:100px;border:1px solid var(--border);
+    color:var(--text-dim);background:rgba(20,110,170,0.05);letter-spacing:0.3px;
+  }
+  .tag.cyan{color:var(--cyan);border-color:rgba(14,143,184,0.35);background:rgba(14,143,184,0.08);}
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:20px 22px;
+    margin-top:18px;
+    backdrop-filter: blur(10px);
+    box-shadow:0 8px 30px rgba(20,70,110,0.10);
+  }
+  .card h2{
+    font-size:0.78rem;text-transform:uppercase;letter-spacing:1.2px;
+    color:var(--cyan);margin:0 0 16px;display:flex;align-items:center;gap:8px;
+  }
+  .step-num{
+    width:20px;height:20px;border-radius:6px;background:rgba(14,143,184,0.14);
+    border:1px solid rgba(14,143,184,0.4);display:inline-flex;align-items:center;justify-content:center;
+    font-size:0.68rem;color:var(--cyan);font-family:var(--mono);
+  }
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media (max-width:640px){.grid2{grid-template-columns:1fr;}}
+
+  label{display:block;font-size:0.78rem;color:var(--text-dim);margin-bottom:6px;}
+  select, input[type=text], input[type=number], textarea{
+    width:100%;padding:10px 12px;border-radius:10px;
+    background:rgba(255,255,255,0.6);border:1px solid var(--border);
+    color:var(--text);font-family:var(--sans);font-size:0.92rem;
+    outline:none;transition:border-color .15s, box-shadow .15s;
+  }
+  select:focus, input:focus, textarea:focus{
+    border-color:var(--border-strong);
+    box-shadow:0 0 0 3px rgba(14,143,184,0.15);
+  }
+  textarea{resize:vertical;min-height:70px;font-family:var(--sans);}
+  .field{margin-bottom:14px;}
+  .hint{font-size:0.72rem;color:var(--text-faint);margin-top:5px;}
+
+  .combo{position:relative;}
+  .combo-list{
+    position:absolute;left:0;right:0;top:calc(100% + 6px);
+    background:var(--panel-solid);border:1px solid var(--border-strong);
+    border-radius:10px;max-height:260px;overflow-y:auto;z-index:20;
+    box-shadow:0 12px 30px rgba(20,70,110,0.16);display:none;
+  }
+  .combo-list.open{display:block;}
+  .combo-item{padding:9px 12px;cursor:pointer;font-size:0.86rem;border-bottom:1px solid rgba(20,110,170,0.08);}
+  .combo-item:last-child{border-bottom:none;}
+  .combo-item:hover, .combo-item.active{background:rgba(14,143,184,0.10);}
+  .combo-item .adms{color:var(--text);font-family:var(--mono);font-size:0.82rem;}
+  .combo-item .sisdat{color:var(--text-faint);font-size:0.74rem;margin-top:2px;}
+  .combo-empty{padding:14px 12px;color:var(--text-faint);font-size:0.82rem;}
+  mark{background:rgba(201,130,10,0.30);color:#5a3a06;border-radius:3px;padding:0 1px;}
+
+  .status-line{display:flex;align-items:center;gap:7px;margin-top:8px;font-size:0.78rem;}
+  .status-line.ok{color:var(--green);}
+  .status-line.bad{color:var(--red);}
+  .status-line.idle{color:var(--text-faint);}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none;}
+
+  .out-box{margin-bottom:16px;}
+  .out-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;gap:10px;}
+  .out-head .lbl{font-size:0.78rem;color:var(--text-dim);}
+  .out-head label{margin-bottom:0;}
+  .copy-btn, .mini-btn{
+    background:rgba(14,143,184,0.10);border:1px solid rgba(14,143,184,0.35);
+    color:var(--cyan);font-size:0.72rem;padding:5px 11px;border-radius:8px;cursor:pointer;
+    display:flex;align-items:center;gap:5px;transition:background .15s;flex:none;
+  }
+  .copy-btn:hover, .mini-btn:hover{background:rgba(14,143,184,0.18);}
+  .copy-btn.copied{background:rgba(31,157,85,0.16);border-color:rgba(31,157,85,0.5);color:var(--green);}
+  .out-value{
+    font-family:var(--mono);font-size:0.9rem;white-space:pre-wrap;word-break:break-word;
+    background:#0d1f30;border:1px solid rgba(14,143,184,0.35);border-radius:10px;
+    padding:12px 14px;min-height:20px;color:#e9f2ff;line-height:1.5;
+  }
+  .out-value.empty{color:var(--text-faint);font-style:italic;font-family:var(--sans);}
+
+  .checklist{display:grid;gap:7px;margin-top:4px;}
+  .check-item{display:flex;align-items:center;gap:8px;font-size:0.8rem;color:var(--text-dim);}
+  .check-item .ico{width:16px;height:16px;flex:none;}
+  .check-item.pass{color:var(--green);}
+  .check-item.fail{color:var(--text-faint);}
+
+  details.legend{margin-top:18px;}
+  details.legend summary{
+    cursor:pointer;font-size:0.8rem;color:var(--text-dim);list-style:none;
+    display:flex;align-items:center;gap:7px;
+  }
+  details.legend summary::-webkit-details-marker{display:none;}
+  details.legend summary:before{content:'▸';color:var(--cyan);transition:transform .15s;}
+  details.legend[open] summary:before{transform:rotate(90deg);}
+  .legend-body{margin-top:12px;font-size:0.8rem;color:var(--text-dim);line-height:1.6;}
+  .legend-body code{font-family:var(--mono);background:rgba(14,143,184,0.08);padding:1px 5px;border-radius:5px;color:var(--cyan);}
+  .legend-body .warn{color:var(--amber);}
+  table.codetbl{width:100%;border-collapse:collapse;margin-top:10px;font-size:0.78rem;}
+  table.codetbl th, table.codetbl td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);}
+  table.codetbl th{color:var(--text-faint);font-weight:500;}
+
+  footer.foot{margin-top:26px;text-align:center;font-size:0.72rem;color:var(--text-faint);}
+</style>
+</head>
+<body>
+<div class="grid-overlay"></div>
+<div class="skyline" id="skyline"></div>
+
+<div class="wrap">
+  <header class="top">
+    <div class="bolt-badge">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M13 2 L4 14h6l-1 8 9-12h-6l1-8z" fill="#0e8fb8" opacity="0.9"/></svg>
+    </div>
+    <div>
+      <h1>Generador de Campos Homologados Órdenes de Trabajo</h1>
+      <p class="subtitle">ADMS · CNEL Guayaquil — genera Company / Purpose / Details ya homologados</p>
+    </div>
+  </header>
+  <div class="tag-row">
+    <span class="tag cyan">Empresa fija: 04 — CNEL Guayaquil</span>
+    <span class="tag">Manual MAE V.2</span>
+    <span class="tag" id="topoCount">357 elementos de topología</span>
+  </div>
+
+  <!-- STEP 1: Elemento -->
+  <div class="card">
+    <h2><span class="step-num">1</span>Elemento de red intervenido</h2>
+    <div class="grid2">
+      <div class="field">
+        <label for="subcat">Categoría / Subcategoría</label>
+        <select id="subcat"></select>
+      </div>
+      <div class="field">
+        <label for="elemBox">Elemento (alimentador / subestación / línea)</label>
+        <div class="combo">
+          <input type="text" id="elemInput" placeholder="Escriba para buscar…" autocomplete="off">
+          <div class="combo-list" id="elemList"></div>
+        </div>
+        <div class="status-line idle" id="elemStatus"><span class="dot"></span><span>Seleccione un elemento de la lista</span></div>
+      </div>
+    </div>
+    <div class="field" style="margin-top:2px;">
+      <label for="companyExtra">Complemento libre para Company (opcional)</label>
+      <input type="text" id="companyExtra" placeholder="Ej: sector Bastión Popular">
+      <div class="hint">Se agrega después de un espacio, tras el nombre homologado.</div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Responsable -->
+  <div class="card">
+    <h2><span class="step-num">2</span>Responsable de la orden</h2>
+    <div class="grid2">
+      <div class="field">
+        <label for="respTelefono">Teléfono del profesional</label>
+        <input type="text" id="respTelefono" placeholder="Ej: 0991234567" inputmode="tel">
+      </div>
+      <div class="field">
+        <label for="respNombre">Nombre del profesional</label>
+        <input type="text" id="respNombre" placeholder="Ej: Juan Pérez">
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Actividad -->
+  <div class="card">
+    <h2><span class="step-num">3</span>Actividad</h2>
+    <div class="field">
+      <label for="actividad">Actividad en el Sistema Eléctrico</label>
+      <select id="actividad"></select>
+    </div>
+    <div class="field">
+      <div class="out-head">
+        <label for="purposeExtra">Resumen para la distribuidora (Purpose)</label>
+        <button type="button" class="mini-btn" id="regenPurposeBtn" title="Vuelve a generar el resumen automático a partir de la actividad y el elemento elegidos">↺ Regenerar</button>
+      </div>
+      <input type="text" id="purposeExtra" placeholder="Se genera automáticamente al elegir actividad y elemento">
+      <div class="hint">Se agrega después de un espacio, tras el código homologado. Se autocompleta como "{actividad} en {tipo de elemento} {nombre ADMS}" — puede editarse si hace falta precisar algo.</div>
+    </div>
+    <div class="field" style="margin-top:2px;">
+      <label for="areaSel">Área del encargado de Trabajos</label>
+      <select id="areaSel">
+        <option value="" selected disabled>-- Seleccione un área --</option>
+        <option value="Redes -Operaciones">Redes -Operaciones</option>
+        <option value="Subestaciones">Subestaciones</option>
+        <option value="Mantenimiento de Redes">Mantenimiento de Redes</option>
+        <option value="Ingenieria y Construcciones">Ingenieria y Construcciones</option>
+      </select>
+      <div class="hint">Se agrega al final de Purpose, después del resumen: "Area: {área}".</div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Details -->
+  <div class="card">
+    <h2><span class="step-num">4</span>Detalles del trabajo</h2>
+    <div class="grid2">
+      <div class="field">
+        <label for="rtelHoras">Horas adicionales por redes de cableoperadoras (RTEL)</label>
+        <input type="number" id="rtelHoras" min="0" max="9.9" step="0.1" value="0">
+        <div class="hint">0,0 si no existen redes de telecomunicaciones que retrasen el trabajo.</div>
+      </div>
+      <div class="field">
+        <label for="descripcion">Descripción completa del trabajo</label>
+        <textarea id="descripcion" placeholder="Describa el trabajo a realizar…"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="card">
+    <h2><span class="step-num">✓</span>Resultado homologado</h2>
+
+    <div class="out-box">
+      <div class="out-head"><span class="lbl">Company</span><button class="copy-btn" data-copy="outCompany">Copiar</button></div>
+      <div class="out-value empty" id="outCompany">Seleccione un elemento…</div>
+    </div>
+
+    <div class="out-box">
+      <div class="out-head"><span class="lbl">Phone Number</span><button class="copy-btn" data-copy="outPhone">Copiar</button></div>
+      <div class="out-value empty" id="outPhone">Ingrese teléfono y nombre del responsable…</div>
+    </div>
+
+    <div class="out-box">
+      <div class="out-head"><span class="lbl">Purpose</span><button class="copy-btn" data-copy="outPurpose">Copiar</button></div>
+      <div class="out-value empty" id="outPurpose">Seleccione una actividad…</div>
+    </div>
+
+    <div class="out-box">
+      <div class="out-head"><span class="lbl">Details</span><button class="copy-btn" data-copy="outDetails">Copiar</button></div>
+      <div class="out-value empty" id="outDetails">Complete la descripción…</div>
+    </div>
+
+    <div class="checklist" id="checklist"></div>
+
+    <details class="legend">
+      <summary>Referencia de códigos (Manual MAE V.2)</summary>
+      <div class="legend-body">
+        Company = <code>{empresa}_{elemento_ADMS} {complemento libre}</code> · Phone Number = <code>{teléfono} {nombre}</code> · Purpose = <code>{cod3}_{cod4} {resumen} Area: {área}</code> · Details = <code>1.RTEL_H</code> + descripción.
+        <table class="codetbl">
+          <tr><th>Categoría</th><th>Cód.</th><th>Company usa</th></tr>
+          <tr><td>Línea de subtransmisión</td><td>LST</td><td>Nombre de línea ADMS</td></tr>
+          <tr><td>Subestación de Distribución</td><td>SED</td><td>Nombre de subestación ADMS</td></tr>
+          <tr><td>Red primaria</td><td>RP-</td><td>Nombre de alimentador ADMS</td></tr>
+          <tr><td>Red secundaria</td><td>RS-</td><td>Nombre de alimentador ADMS</td></tr>
+          <tr><td>Transformador de Distribución</td><td>RPT</td><td>Nombre de alimentador ADMS al que pertenece</td></tr>
+        </table>
+        <p class="warn">⚠ El manual PDF (Tabla 3) imprime <code>TMGF</code> para "LST Predictivo", pero el catálogo interno vigente usa <code>MPTG</code> (igual que en el resto de categorías). Esta app usa <code>MPTG</code> para ser consistente con el catálogo activo. Confírmalo con Control Nacional de Distribución si tienes dudas.</p>
+      </div>
+    </details>
+  </div>
+
+  <footer class="foot">Corre 100% local en tu navegador — no envía información a ningún servidor. Datos de topología y catálogo tomados de tu archivo de homologación MAE.</footer>
+</div>
+
+<script>
+const DATA = {"empresa":{"codigo":"04","nombre":"CNEL Guayaquil"},"catalog":[{"cod3":"LST","cod4":"DESB","actividad":"Desbroce","elementoRef":"linea"},{"cod3":"LST","cod4":"MPTG","actividad":"Predictivo","elementoRef":"linea"},{"cod3":"LST","cod4":"MLST","actividad":"Mantenimiento Estructuras LST","elementoRef":"linea"},{"cod3":"SED","cod4":"DESB","actividad":"Desbroce","elementoRef":"trafo de potencia/interruptores"},{"cod3":"SED","cod4":"MPTG","actividad":"Predictivo","elementoRef":"sección de red"},{"cod3":"SED","cod4":"MSED","actividad":"Mantenimiento Equipamiento SED","elementoRef":"sección de red"},{"cod3":"RP-","cod4":"DESB","actividad":"Desbroce","elementoRef":"Sección de red anterior al poste"},{"cod3":"RP-","cod4":"MPTG","actividad":"Predictivo","elementoRef":"transformador de distribución"},{"cod3":"RP-","cod4":"MESL","actividad":"Mantenimiento Estructuras y lineas","elementoRef":"rec, reg, cap, secc, int"},{"cod3":"RP-","cod4":"MEPR","actividad":"Mantenimiento Equipos primario","elementoRef":"Sección de red"},{"cod3":"RP-","cod4":"RTEL","actividad":"Redes de cableoperadoras/mante telecomuni","elementoRef":"Celdas"},{"cod3":"RP-","cod4":"MCAB","actividad":"Mantenimiento en Cabinas","elementoRef":"Celdas"},{"cod3":"RS-","cod4":"DESB","actividad":"Desbroce","elementoRef":"transformador de distribución"},{"cod3":"RS-","cod4":"MPTG","actividad":"Predictivo","elementoRef":"transformador de distribución"},{"cod3":"RS-","cod4":"MESL","actividad":"Mantenimiento Estructuras y lineas","elementoRef":"transformador de distribución"},{"cod3":"RS-","cod4":"MCAB","actividad":"Mantenimiento en Cabinas","elementoRef":"Celdas"},{"cod3":"RS-","cod4":"RTEL","actividad":"Redes de cableoperadoras","elementoRef":"transformador de distribución"},{"cod3":"RPT","cod4":"MPTG","actividad":"Predictivo","elementoRef":"transformador de distribución"},{"cod3":"RPT","cod4":"MTRF","actividad":"Mantenimiento Transformador de distribución","elementoRef":"transformador de distribución"},{"cod3":"RPT","cod4":"CTRF","actividad":"Campañas de mantenimiento","elementoRef":"transformador de distribución"}],"topologia":[{"nombreAdms":"04_01_Alborada","nombreSisdat":" ALBORADA 03","tipo":"ALIMENTADOR"},{"nombreAdms":"04_01_ALBORADA 1","nombreSisdat":"04_01_ALBORADA 1","tipo":"SED"},{"nombreAdms":"04_01_Benjamin Carrión","nombreSisdat":" BENJAMIN CARRION 04","tipo":"ALIMENTADOR"},{"nombreAdms":"04_01_Satirion","nombreSisdat":" SATIRION 05","tipo":"ALIMENTADOR"},{"nombreAdms":"04_01_Tanca Marengo","nombreSisdat":" TANCA MARENGO 06","tipo":"ALIMENTADOR"},{"nombreAdms":"04_02_Acuarela","nombreSisdat":" ACUARELA 180","tipo":"ALIMENTADOR"},{"nombreAdms":"04_02_ALBORADA 2","nombreSisdat":"04_02_ALBORADA 2","tipo":"SED"},{"nombreAdms":"04_02_Antonio Parra","nombreSisdat":" ANTONIO PARRA 182","tipo":"ALIMENTADOR"},{"nombreAdms":"04_02_Comegua","nombreSisdat":" COMEGUA 55","tipo":"ALIMENTADOR"},{"nombreAdms":"04_02_Isidro Ayora","nombreSisdat":" ISIDRO AYORA 174","tipo":"ALIMENTADOR"},{"nombreAdms":"04_03_AMERICA","nombreSisdat":"04_03_AMERICA","tipo":"SED"},{"nombreAdms":"04_03_Del Olimpo","nombreSisdat":" OLIMPO 09","tipo":"ALIMENTADOR"},{"nombreAdms":"04_03_Kennedy","nombreSisdat":" KENNEDY 07","tipo":"ALIMENTADOR"},{"nombreAdms":"04_03_Miguel H. Alcivar ","nombreSisdat":" MIGUEL H. ALCIVAR 08","tipo":"ALIMENTADOR"},{"nombreAdms":"04_03_Plaza Dañin","nombreSisdat":" PLAZA DAÑIN 10","tipo":"ALIMENTADOR"},{"nombreAdms":"04_04_Alfaro","nombreSisdat":" ALFARO 97","tipo":"ALIMENTADOR"},{"nombreAdms":"04_04_ASTILLEROS","nombreSisdat":"04_04_ASTILLEROS","tipo":"SED"},{"nombreAdms":"04_04_Chile","nombreSisdat":" CHILE 95","tipo":"ALIMENTADOR"},{"nombreAdms":"04_04_Coronel","nombreSisdat":" CORONEL 96","tipo":"ALIMENTADOR"},{"nombreAdms":"04_04_El Oro","nombreSisdat":" EL ORO 98","tipo":"ALIMENTADOR"},{"nombreAdms":"04_04_Esmeraldas","nombreSisdat":" ESMERALDAS 99","tipo":"ALIMENTADOR"},{"nombreAdms":"04_04_Rumichaca ","nombreSisdat":" RUMICHACA 100","tipo":"ALIMENTADOR"},{"nombreAdms":"04_05_ATARAZANA","nombreSisdat":"04_05_ATARAZANA","tipo":"SED"},{"nombreAdms":"04_05_Atarazana 1","nombreSisdat":" ATARAZANA 1 11","tipo":"ALIMENTADOR"},{"nombreAdms":"04_05_Atarazana 2","nombreSisdat":" ATARAZANA 2 12","tipo":"ALIMENTADOR"},{"nombreAdms":"04_05_Atarazana 3","nombreSisdat":" ATARAZANA 3 13","tipo":"ALIMENTADOR"},{"nombreAdms":"04_06_AYACUCHO","nombreSisdat":"04_06_AYACUCHO","tipo":"SED"},{"nombreAdms":"04_06_Calixto Romero","nombreSisdat":" CALIXTO ROMERO 14","tipo":"ALIMENTADOR"},{"nombreAdms":"04_06_Centro Park","nombreSisdat":" CENTRO PARK 15","tipo":"ALIMENTADOR"},{"nombreAdms":"04_06_Luque","nombreSisdat":" LUQUE 16","tipo":"ALIMENTADOR"},{"nombreAdms":"04_06_Pichincha","nombreSisdat":" PICHINCHA 17","tipo":"ALIMENTADOR"},{"nombreAdms":"04_07_Belo Horizonte","nombreSisdat":" BELO HORIZONTE 164","tipo":"ALIMENTADOR"},{"nombreAdms":"04_07_BELOHORIZONTE","nombreSisdat":"04_07_BELOHORIZONTE","tipo":"SED"},{"nombreAdms":"04_07_Bosques de la Costa","nombreSisdat":" BOSQUES DE LA COSTA 170","tipo":"ALIMENTADOR"},{"nombreAdms":"04_07_Portal al Sol","nombreSisdat":" PORTAL AL SOL","tipo":"ALIMENTADOR"},{"nombreAdms":"04_07_Puerto Azul","nombreSisdat":" PUERTO AZUL 167","tipo":"ALIMENTADOR"},{"nombreAdms":"04_08_BIEN PUBLICO","nombreSisdat":"04_08_BIEN PUBLICO","tipo":"SED"},{"nombreAdms":"04_08_Jose Mascote","nombreSisdat":" JOSE MASCOTE 18","tipo":"ALIMENTADOR"},{"nombreAdms":"04_08_Manuel Galecio","nombreSisdat":" MANUEL GALECIO","tipo":"ALIMENTADOR"},{"nombreAdms":"04_08_Naval Norte","nombreSisdat":"NAVAL NORTE","tipo":"ALIMENTADOR"},{"nombreAdms":"04_08_Quisquis","nombreSisdat":" QUISQUIS 19","tipo":"ALIMENTADOR"},{"nombreAdms":"04_09_BOYACA","nombreSisdat":"04_09_BOYACA","tipo":"SED"},{"nombreAdms":"04_09_Cordova","nombreSisdat":" CORDOVA 20","tipo":"ALIMENTADOR"},{"nombreAdms":"04_09_Malecon","nombreSisdat":" MALECON 21","tipo":"ALIMENTADOR"},{"nombreAdms":"04_09_Mendiburo","nombreSisdat":" MENDIBURO 22","tipo":"ALIMENTADOR"},{"nombreAdms":"04_09_Nueva Boyacá","nombreSisdat":" NUEVA BOYACA 23","tipo":"ALIMENTADOR"},{"nombreAdms":"04_09_Padre Solano","nombreSisdat":" PADRE SOLANO 24","tipo":"ALIMENTADOR"},{"nombreAdms":"04_09_Panama","nombreSisdat":" PANAMA 25","tipo":"ALIMENTADOR"},{"nombreAdms":"04_09_Previsora ","nombreSisdat":" PREVISORA 26","tipo":"ALIMENTADOR"},{"nombreAdms":"04_09_Rocafuerte","nombreSisdat":" ROCAFUERTE 27","tipo":"ALIMENTADOR"},{"nombreAdms":"04_10_Carlos Julio Arosemena","nombreSisdat":" CARLOS JULIO 28","tipo":"ALIMENTADOR"},{"nombreAdms":"04_10_CEIBOS","nombreSisdat":"04_10_CEIBOS","tipo":"SED"},{"nombreAdms":"04_10_Las Lomas","nombreSisdat":" LOMAS 30","tipo":"ALIMENTADOR"},{"nombreAdms":"04_10_Los Ceibos","nombreSisdat":" CEIBOS 29","tipo":"ALIMENTADOR"},{"nombreAdms":"04_10_Miraflores","nombreSisdat":" MIRAFLORES 31","tipo":"ALIMENTADOR"},{"nombreAdms":"04_10_Norte","nombreSisdat":" NORTE 32","tipo":"ALIMENTADOR"},{"nombreAdms":"04_10_Urdesa","nombreSisdat":" URDESA 33","tipo":"ALIMENTADOR"},{"nombreAdms":"04_11_CERRO BLANCO","nombreSisdat":"04_11_CERRO BLANCO","tipo":"SED"},{"nombreAdms":"04_11_Cerro Blanco 4","nombreSisdat":" CERRO BLANCO 4 144","tipo":"ALIMENTADOR"},{"nombreAdms":"04_11_Puerto Hondo","nombreSisdat":" PUERTO HONDO 36","tipo":"ALIMENTADOR"},{"nombreAdms":"04_11_Valle Alto","nombreSisdat":" VALLE ALTO 178","tipo":"ALIMENTADOR"},{"nombreAdms":"04_11_Vía al Sol","nombreSisdat":" VIA AL SOL","tipo":"ALIMENTADOR"},{"nombreAdms":"04_12_Chongon","nombreSisdat":" CHONGON","tipo":"ALIMENTADOR"},{"nombreAdms":"04_12_CHONGON","nombreSisdat":"04_12_CHONGON","tipo":"SED"},{"nombreAdms":"04_12_Los Ángeles","nombreSisdat":" LOS ANGELES 177","tipo":"ALIMENTADOR"},{"nombreAdms":"04_12_Odebrecht","nombreSisdat":" ODEBRECHT","tipo":"ALIMENTADOR"},{"nombreAdms":"04_13_Ceibos Norte","nombreSisdat":" CEIBOS NORTE 77","tipo":"ALIMENTADOR"},{"nombreAdms":"04_13_Celoplast","nombreSisdat":" CELOPLAST 78","tipo":"ALIMENTADOR"},{"nombreAdms":"04_13_CUMBRES","nombreSisdat":"04_13_CUMBRES","tipo":"SED"},{"nombreAdms":"04_13_Cumbres 4","nombreSisdat":" CUMBRES 4 128","tipo":"ALIMENTADOR"},{"nombreAdms":"04_13_Sta. Cecilia","nombreSisdat":" SANTA CECILIA 79","tipo":"ALIMENTADOR"},{"nombreAdms":"04_14_4 de Noviembre","nombreSisdat":" 4 DE NOVIEMBRE 37","tipo":"ALIMENTADOR"},{"nombreAdms":"04_14_Acacias","nombreSisdat":" ACACIAS 38","tipo":"ALIMENTADOR"},{"nombreAdms":"04_14_Antepara","nombreSisdat":" ANTEPARA 39","tipo":"ALIMENTADOR"},{"nombreAdms":"04_14_Av. del Ejercito","nombreSisdat":" AV. DEL EJERCITO 40","tipo":"ALIMENTADOR"},{"nombreAdms":"04_14_ESMERALDAS","nombreSisdat":"04_14_ESMERALDAS","tipo":"SED"},{"nombreAdms":"04_14_Fco. Segura","nombreSisdat":" FCO. SEGURA 41","tipo":"ALIMENTADOR"},{"nombreAdms":"04_14_Trujillo","nombreSisdat":" TRUJILLO 42","tipo":"ALIMENTADOR"},{"nombreAdms":"04_14_Tulcan","nombreSisdat":" TULCAN 43","tipo":"ALIMENTADOR"},{"nombreAdms":"04_14_Venezuela","nombreSisdat":" VENEZUELA 44","tipo":"ALIMENTADOR"},{"nombreAdms":"04_15_FLOR DE BASTION","nombreSisdat":"04_15_FLOR DE BASTION","tipo":"SED"},{"nombreAdms":"04_15_Flor de Bastión 4","nombreSisdat":" FLOR DE BASTION 4 143","tipo":"ALIMENTADOR"},{"nombreAdms":"04_15_Flor de Bastión 5","nombreSisdat":" FLOR DE BASTION 5 153","tipo":"ALIMENTADOR"},{"nombreAdms":"04_15_Flor de Bastión Este","nombreSisdat":" FLOR DE BASTION ESTE 131","tipo":"ALIMENTADOR"},{"nombreAdms":"04_15_Flor de Bastión Norte","nombreSisdat":" FLOR DE BASTION NORTE 179","tipo":"ALIMENTADOR"},{"nombreAdms":"04_15_Flor de Bastión Oeste","nombreSisdat":" FLOR DE BASTION OESTE 132","tipo":"ALIMENTADOR"},{"nombreAdms":"04_15_Fortin","nombreSisdat":" EL FORTIN 137","tipo":"ALIMENTADOR"},{"nombreAdms":"04_16_FORTIN","nombreSisdat":"04_16_FORTIN","tipo":"SED"},{"nombreAdms":"04_16_Fortin 3","nombreSisdat":" EL FORTIN 3","tipo":"ALIMENTADOR"},{"nombreAdms":"04_16_Fortin 4","nombreSisdat":" EL FORTIN 4","tipo":"ALIMENTADOR"},{"nombreAdms":"04_16_Fortin Este","nombreSisdat":" EL FORTIN ESTE 155","tipo":"ALIMENTADOR"},{"nombreAdms":"04_16_Fortin Oeste","nombreSisdat":" EL FORTIN OESTE 162","tipo":"ALIMENTADOR"},{"nombreAdms":"04_17_10 de Agosto","nombreSisdat":" 10 DE AGOSTO 45","tipo":"ALIMENTADOR"},{"nombreAdms":"04_17_Aguirre","nombreSisdat":" AGUIRRE 46","tipo":"ALIMENTADOR"},{"nombreAdms":"04_17_Colon","nombreSisdat":" COLON 47","tipo":"ALIMENTADOR"},{"nombreAdms":"04_17_Delta","nombreSisdat":" DELTA 48","tipo":"ALIMENTADOR"},{"nombreAdms":"04_17_El Salado","nombreSisdat":" EL SALADO 49","tipo":"ALIMENTADOR"},{"nombreAdms":"04_17_GARAY","nombreSisdat":"04_17_GARAY","tipo":"SED"},{"nombreAdms":"04_17_Huancavilca","nombreSisdat":" HUANCAVILCA 50","tipo":"ALIMENTADOR"},{"nombreAdms":"04_17_Hurtado","nombreSisdat":" HURTADO 51","tipo":"ALIMENTADOR"},{"nombreAdms":"04_17_Velez","nombreSisdat":" VELEZ 52","tipo":"ALIMENTADOR"},{"nombreAdms":"04_18_Aeropuerto","nombreSisdat":" AEROPUERTO 54","tipo":"ALIMENTADOR"},{"nombreAdms":"04_18_Agustin Freire","nombreSisdat":" AGUSTIN FREIRE 53","tipo":"ALIMENTADOR"},{"nombreAdms":"04_18_Garzota","nombreSisdat":" GARZOTA 4 124","tipo":"ALIMENTADOR"},{"nombreAdms":"04_18_GARZOTA","nombreSisdat":"04_18_GARZOTA","tipo":"SED"},{"nombreAdms":"04_18_Gran Manzana","nombreSisdat":" GRAN MANZANA 157","tipo":"ALIMENTADOR"},{"nombreAdms":"04_19_Chorrillo","nombreSisdat":" EL CHORRILLO 172","tipo":"ALIMENTADOR"},{"nombreAdms":"04_19_Cobre","nombreSisdat":" COBRE 56","tipo":"ALIMENTADOR"},{"nombreAdms":"04_19_GERMANIA","nombreSisdat":"04_19_GERMANIA","tipo":"SED"},{"nombreAdms":"04_19_Pascuales","nombreSisdat":" PASCUALES 58","tipo":"ALIMENTADOR"},{"nombreAdms":"04_19_Rosavin","nombreSisdat":" ROSAVIN 59","tipo":"ALIMENTADOR"},{"nombreAdms":"04_20_Acerias","nombreSisdat":" ACERIAS 60","tipo":"ALIMENTADOR"},{"nombreAdms":"04_20_Cuba","nombreSisdat":" CUBA 61","tipo":"ALIMENTADOR"},{"nombreAdms":"04_20_Floresta","nombreSisdat":" FLORESTA 63","tipo":"ALIMENTADOR"},{"nombreAdms":"04_20_GUASMO","nombreSisdat":"04_20_GUASMO","tipo":"SED"},{"nombreAdms":"04_20_Guasmo Centro","nombreSisdat":" GUASMO CENTRO 64","tipo":"ALIMENTADOR"},{"nombreAdms":"04_20_Guasmo Sur","nombreSisdat":" GUASMO SUR 65","tipo":"ALIMENTADOR"},{"nombreAdms":"04_20_Las Tejas","nombreSisdat":" LAS TEJAS 154","tipo":"ALIMENTADOR"},{"nombreAdms":"04_20_Union de Bananeros","nombreSisdat":" UNION DE BANANEROS 66","tipo":"ALIMENTADOR"},{"nombreAdms":"04_21_GUAYACANES","nombreSisdat":"04_21_GUAYACANES","tipo":"SED"},{"nombreAdms":"04_21_Guayacanes #1","nombreSisdat":" GUAYACANES 1 67","tipo":"ALIMENTADOR"},{"nombreAdms":"04_21_Guayacanes #2","nombreSisdat":" GUAYACANES 2","tipo":"ALIMENTADOR"},{"nombreAdms":"04_21_Guayacanes #3","nombreSisdat":" GUAYACANES 3 69","tipo":"ALIMENTADOR"},{"nombreAdms":"04_21_Guayacanes #4","nombreSisdat":" GUAYACANES 4 70","tipo":"ALIMENTADOR"},{"nombreAdms":"04_21_Guayacanes #6","nombreSisdat":" GUAYACANES 6","tipo":"ALIMENTADOR"},{"nombreAdms":"04_21_Guayacanes #7","nombreSisdat":" GUAYACANES 7 68","tipo":"ALIMENTADOR"},{"nombreAdms":"04_21_Guayacanes #8","nombreSisdat":" GUAYACANES 8","tipo":"ALIMENTADOR"},{"nombreAdms":"04_22_Centrum","nombreSisdat":" CENTRUM 71","tipo":"ALIMENTADOR"},{"nombreAdms":"04_22_Jose Castillo","nombreSisdat":" JOSE CASTILLO 72","tipo":"ALIMENTADOR"},{"nombreAdms":"04_22_KENNEDY NORTE","nombreSisdat":"04_22_KENNEDY NORTE","tipo":"SED"},{"nombreAdms":"04_22_Las Cámaras","nombreSisdat":" LAS CAMARAS 73","tipo":"ALIMENTADOR"},{"nombreAdms":"04_22_Plaza del Sol","nombreSisdat":" PLAZA DEL SOL 74","tipo":"ALIMENTADOR"},{"nombreAdms":"04_22_San Marino","nombreSisdat":" SAN MARINO 125","tipo":"ALIMENTADOR"},{"nombreAdms":"04_22_Urdenor","nombreSisdat":" URDENOR 75","tipo":"ALIMENTADOR"},{"nombreAdms":"04_22_World Trade Center","nombreSisdat":" WORLD TRADE CENTER 76","tipo":"ALIMENTADOR"},{"nombreAdms":"04_23_MAPASINGUE","nombreSisdat":"04_23_MAPASINGUE","tipo":"SED"},{"nombreAdms":"04_23_Mapasingue #5","nombreSisdat":" MAPASINGUE 5 82","tipo":"ALIMENTADOR"},{"nombreAdms":"04_23_Mapasingue #6","nombreSisdat":" MAPASINGUE 6 85","tipo":"ALIMENTADOR"},{"nombreAdms":"04_23_Mapasingue #7","nombreSisdat":" MAPASINGUE 7 156","tipo":"ALIMENTADOR"},{"nombreAdms":"04_23_Mapasingue #2","nombreSisdat":" MAPASINGUE 2 81","tipo":"ALIMENTADOR"},{"nombreAdms":"04_23_Mapasingue #1","nombreSisdat":" MAPASINGUE 1 80","tipo":"ALIMENTADOR"},{"nombreAdms":"04_23_Mapasingue #8","nombreSisdat":" MAPASINGUE 8 147","tipo":"ALIMENTADOR"},{"nombreAdms":"04_23_Mapasingue #3","nombreSisdat":" MAPASINGUE 3 84","tipo":"ALIMENTADOR"},{"nombreAdms":"04_23_Mapasingue #4","nombreSisdat":" MAPASINGUE 4 83","tipo":"ALIMENTADOR"},{"nombreAdms":"04_24_Gomez Lince","nombreSisdat":" GOMEZ LINCE","tipo":"ALIMENTADOR"},{"nombreAdms":"04_24_Limoncocha","nombreSisdat":" LIMONCOCHA","tipo":"ALIMENTADOR"},{"nombreAdms":"04_24_Los Ranchos","nombreSisdat":" LOS RANCHOS 129","tipo":"ALIMENTADOR"},{"nombreAdms":"04_24_Malaga","nombreSisdat":" MALAGA","tipo":"ALIMENTADOR"},{"nombreAdms":"04_24_Mariscal Sucre","nombreSisdat":" MARISCAL SUCRE","tipo":"ALIMENTADOR"},{"nombreAdms":"04_24_Metropolis","nombreSisdat":" METROPOLIS 173","tipo":"ALIMENTADOR"},{"nombreAdms":"04_24_Mucho Lote","nombreSisdat":" MUCHO LOTE 137","tipo":"ALIMENTADOR"},{"nombreAdms":"04_24_Orquideas","nombreSisdat":" ORQUIDEAS 119","tipo":"ALIMENTADOR"},{"nombreAdms":"04_24_ORQUIDEAS","nombreSisdat":"04_24_ORQUIDEAS","tipo":"SED"},{"nombreAdms":"04_25_PADRE CANALS","nombreSisdat":"04_25_PADRE CANALS","tipo":"SED"},{"nombreAdms":"04_25_Suburbio #1","nombreSisdat":" SUBURBIO 1 86","tipo":"ALIMENTADOR"},{"nombreAdms":"04_25_Suburbio #2","nombreSisdat":" SUBURBIO 2 87","tipo":"ALIMENTADOR"},{"nombreAdms":"04_25_Suburbio #3","nombreSisdat":" SUBURBIO 3 88","tipo":"ALIMENTADOR"},{"nombreAdms":"04_25_Suburbio #4","nombreSisdat":" SUBURBIO 4 89","tipo":"ALIMENTADOR"},{"nombreAdms":"04_25_Suburbio #5","nombreSisdat":" SUBURBIO 5 146","tipo":"ALIMENTADOR"},{"nombreAdms":"04_25_Suburbio #6","nombreSisdat":" SUBURBIO 6 148","tipo":"ALIMENTADOR"},{"nombreAdms":"04_26_California #1","nombreSisdat":" CALIFORNIA 1 135","tipo":"ALIMENTADOR"},{"nombreAdms":"04_26_California #2","nombreSisdat":" CALIFORNIA 2 142","tipo":"ALIMENTADOR"},{"nombreAdms":"04_26_California #4","nombreSisdat":" PARQUE CALIFORNIA 4","tipo":"ALIMENTADOR"},{"nombreAdms":"04_26_Parque California","nombreSisdat":" PARQUE CALIFORNIA 136","tipo":"ALIMENTADOR"},{"nombreAdms":"04_26_PARQUE CALIFORNIA","nombreSisdat":"04_26_PARQUE CALIFORNIA","tipo":"SED"},{"nombreAdms":"04_27_25 de Julio","nombreSisdat":" 25 DE JULIO 90","tipo":"ALIMENTADOR"},{"nombreAdms":"04_27_Abdon Calderón","nombreSisdat":" ABDON CALDERON 126","tipo":"ALIMENTADOR"},{"nombreAdms":"04_27_Cartonera","nombreSisdat":" CARTONERA 91","tipo":"ALIMENTADOR"},{"nombreAdms":"04_27_PORTUARIA","nombreSisdat":"04_27_PORTUARIA","tipo":"SED"},{"nombreAdms":"04_27_Portuaria 4","nombreSisdat":" PORTUARIA 4 149","tipo":"ALIMENTADOR"},{"nombreAdms":"04_28_Barrio Lindo","nombreSisdat":" BARRIO LINDO 101","tipo":"ALIMENTADOR"},{"nombreAdms":"04_28_El Cisne","nombreSisdat":" EL CISNE 127","tipo":"ALIMENTADOR"},{"nombreAdms":"04_28_La Chala","nombreSisdat":" LA CHALA 102","tipo":"ALIMENTADOR"},{"nombreAdms":"04_28_PUERTO LIZA","nombreSisdat":"04_28_PUERTO LIZA","tipo":"SED"},{"nombreAdms":"04_29_Bella Aurora","nombreSisdat":" BELLA AURORA","tipo":"ALIMENTADOR"},{"nombreAdms":"04_29_Bellini","nombreSisdat":" BELLINI 181","tipo":"ALIMENTADOR"},{"nombreAdms":"04_29_PUERTO SANTA ANA","nombreSisdat":"04_29_PUERTO SANTA ANA","tipo":"SED"},{"nombreAdms":"04_29_Puerto Sta. Ana 2","nombreSisdat":" PUERTO SANTA ANA 2 123","tipo":"ALIMENTADOR"},{"nombreAdms":"04_29_River Front","nombreSisdat":" RIVER FRONT 175","tipo":"ALIMENTADOR"},{"nombreAdms":"04_29_Santa Ana Loft","nombreSisdat":" SANTA ANA LOFT","tipo":"ALIMENTADOR"},{"nombreAdms":"04_29_The Point","nombreSisdat":" THE POINT 176","tipo":"ALIMENTADOR"},{"nombreAdms":"04_30_Coviem","nombreSisdat":" COVIEM 139","tipo":"ALIMENTADOR"},{"nombreAdms":"04_30_Del Maestro","nombreSisdat":" DEL MAESTRO 92","tipo":"ALIMENTADOR"},{"nombreAdms":"04_30_Fertisa","nombreSisdat":" FERTISA 62","tipo":"ALIMENTADOR"},{"nombreAdms":"04_30_Los Esteros","nombreSisdat":" LOS ESTEROS 93","tipo":"ALIMENTADOR"},{"nombreAdms":"04_30_Mall del Sur","nombreSisdat":" MALL DEL SUR 138","tipo":"ALIMENTADOR"},{"nombreAdms":"04_30_PRADERA","nombreSisdat":"04_30_PRADERA","tipo":"SED"},{"nombreAdms":"04_30_Valdivia","nombreSisdat":" VALDIVIA 94","tipo":"ALIMENTADOR"},{"nombreAdms":"04_31_Capeira","nombreSisdat":" CAPEIRA 165","tipo":"ALIMENTADOR"},{"nombreAdms":"04_31_Country Club","nombreSisdat":" COUNTRY CLUB 169","tipo":"ALIMENTADOR"},{"nombreAdms":"04_31_SAFANDO","nombreSisdat":"04_31_SAFANDO","tipo":"SED"},{"nombreAdms":"04_32_Alamos","nombreSisdat":" LOS ALAMOS","tipo":"ALIMENTADOR"},{"nombreAdms":"04_32_Albonor","nombreSisdat":" ALBONOR","tipo":"ALIMENTADOR"},{"nombreAdms":"04_32_Juan Montalvo","nombreSisdat":" JUAN MONTALVO 141","tipo":"ALIMENTADOR"},{"nombreAdms":"04_32_Pajaro Azul","nombreSisdat":" PAJARO AZUL","tipo":"ALIMENTADOR"},{"nombreAdms":"04_32_Samanes","nombreSisdat":" SAMANES 140","tipo":"ALIMENTADOR"},{"nombreAdms":"04_32_SAMANES","nombreSisdat":"04_32_SAMANES","tipo":"SED"},{"nombreAdms":"04_32_Samanes 3","nombreSisdat":" SAMANES 3 151","tipo":"ALIMENTADOR"},{"nombreAdms":"04_32_Samanes 4","nombreSisdat":" SAMANES 4 150","tipo":"ALIMENTADOR"},{"nombreAdms":"04_32_Samanes 6","nombreSisdat":" SAMANES 6","tipo":"ALIMENTADOR"},{"nombreAdms":"04_33_SAUCE","nombreSisdat":"04_33_SAUCE","tipo":"SED"},{"nombreAdms":"04_33_Sauce #1","nombreSisdat":" SAUCES 1 103","tipo":"ALIMENTADOR"},{"nombreAdms":"04_33_Sauce #2","nombreSisdat":" SAUCES 2 104","tipo":"ALIMENTADOR"},{"nombreAdms":"04_33_Sauce #3","nombreSisdat":" SAUCES 3 105","tipo":"ALIMENTADOR"},{"nombreAdms":"04_33_Sauce #4","nombreSisdat":" SAUCES 4 106","tipo":"ALIMENTADOR"},{"nombreAdms":"04_33_Sauce #5","nombreSisdat":" SAUCES 5 107","tipo":"ALIMENTADOR"},{"nombreAdms":"04_34_TORRE","nombreSisdat":"04_34_TORRE","tipo":"SED"},{"nombreAdms":"04_34_Torre #1","nombreSisdat":" TORRE 1 108","tipo":"ALIMENTADOR"},{"nombreAdms":"04_34_Torre #2","nombreSisdat":" TORRE 2 109","tipo":"ALIMENTADOR"},{"nombreAdms":"04_34_Torre #3","nombreSisdat":" TORRE 3 110","tipo":"ALIMENTADOR"},{"nombreAdms":"04_34_Torre #4","nombreSisdat":" TORRE 4 111","tipo":"ALIMENTADOR"},{"nombreAdms":"04_34_Torre #5","nombreSisdat":" TORRE 5 112","tipo":"ALIMENTADOR"},{"nombreAdms":"04_34_Torre #6","nombreSisdat":" TORRE 6 113","tipo":"ALIMENTADOR"},{"nombreAdms":"04_35_TRINITARIA","nombreSisdat":"04_35_TRINITARIA","tipo":"SED"},{"nombreAdms":"04_35_Trinitaria #4","nombreSisdat":" TRINITARIA 4 158","tipo":"ALIMENTADOR"},{"nombreAdms":"04_35_Trinitaria Norte","nombreSisdat":" TRINITARIA 1(NORTE) 121","tipo":"ALIMENTADOR"},{"nombreAdms":"04_35_Trinitaria Sur","nombreSisdat":" TRINITARIA 2(SUR) 122","tipo":"ALIMENTADOR"},{"nombreAdms":"04_36_Domingo Comin","nombreSisdat":" DOMINGO COMIN 114","tipo":"ALIMENTADOR"},{"nombreAdms":"04_36_El Universo","nombreSisdat":" EL UNIVERSO 116","tipo":"ALIMENTADOR"},{"nombreAdms":"04_36_Fadesa","nombreSisdat":" FADESA 152","tipo":"ALIMENTADOR"},{"nombreAdms":"04_36_La Saiba","nombreSisdat":" LA SAIBA 115","tipo":"ALIMENTADOR"},{"nombreAdms":"04_36_UNIVERSO","nombreSisdat":"04_36_UNIVERSO","tipo":"SED"},{"nombreAdms":"04_37_Bastion","nombreSisdat":" BASTION 117","tipo":"ALIMENTADOR"},{"nombreAdms":"04_37_Camino a los Vergeles","nombreSisdat":" CAMINO A LOS VERGELES 133","tipo":"ALIMENTADOR"},{"nombreAdms":"04_37_Los Rosales","nombreSisdat":" LOS ROSALES 118","tipo":"ALIMENTADOR"},{"nombreAdms":"04_37_Teniente Hugo Ortiz","nombreSisdat":" TENIENTE HUGO ORTIZ 130","tipo":"ALIMENTADOR"},{"nombreAdms":"04_37_VERGELES","nombreSisdat":"04_37_VERGELES","tipo":"SED"},{"nombreAdms":"04_38_Almirante Illingworth","nombreSisdat":" ALMIRANTE ILLINGWORTH","tipo":"ALIMENTADOR"},{"nombreAdms":"04_38_Colinas al Sol","nombreSisdat":" COLINAS AL SOL","tipo":"ALIMENTADOR"},{"nombreAdms":"04_38_Expo Granos","nombreSisdat":" EXPOGRANOS","tipo":"ALIMENTADOR"},{"nombreAdms":"04_38_LOTES ALEGRIA","nombreSisdat":"04_38_LOTES ALEGRIA","tipo":"SED"},{"nombreAdms":"04_38_Lotes Alegria 3","nombreSisdat":" LOTES ALEGRIA 3","tipo":"ALIMENTADOR"},{"nombreAdms":"04_39_Los Geranios","nombreSisdat":" GERANIOS","tipo":"ALIMENTADOR"},{"nombreAdms":"04_39_Magisterio","nombreSisdat":" MAGISTERIO","tipo":"ALIMENTADOR"},{"nombreAdms":"04_39_MUCHO LOTE","nombreSisdat":"04_39_MUCHO LOTE","tipo":"SED"},{"nombreAdms":"04_39_Paraíso del Río","nombreSisdat":" PARAISO DEL RIO","tipo":"ALIMENTADOR"},{"nombreAdms":"04_39_Plaza Victoria","nombreSisdat":" PLAZA VICTORIA","tipo":"ALIMENTADOR"},{"nombreAdms":"04_40_INDURA","nombreSisdat":"04_40_INDURA","tipo":"SED"},{"nombreAdms":"04_41_PM ASTILLERO","nombreSisdat":"04_41_PM ASTILLERO","tipo":"SED"},{"nombreAdms":"04_42_SUPAN","nombreSisdat":"04_42_SUPAN","tipo":"SED"},{"nombreAdms":"04_43_CERVECERIA","nombreSisdat":"04_43_CERVECERIA","tipo":"SED"},{"nombreAdms":"04_44_6 de Marzo","nombreSisdat":" 6 DE MARZO","tipo":"ALIMENTADOR"},{"nombreAdms":"04_44_Chimborazo","nombreSisdat":" CHIMBORAZO","tipo":"ALIMENTADOR"},{"nombreAdms":"04_44_HUANCAVILCA","nombreSisdat":"04_44_HUANCAVILCA","tipo":"SED"},{"nombreAdms":"04_44_Pedro Moncayo","nombreSisdat":" PEDRO MONCAYO","tipo":"ALIMENTADOR"},{"nombreAdms":"04_46_MI LOTE","nombreSisdat":"04_46_MI LOTE","tipo":"SED"},{"nombreAdms":"04_46_Mi Lote 1","nombreSisdat":" MI LOTE 1","tipo":"ALIMENTADOR"},{"nombreAdms":"04_46_Mi Lote 2","nombreSisdat":"MI LOTE 2","tipo":"ALIMENTADOR"},{"nombreAdms":"04_49_PROTISA","nombreSisdat":"04_49_PROTISA","tipo":"SED"},{"nombreAdms":"04_50_ZOFRAGUA","nombreSisdat":"04_50_ZOFRAGUA","tipo":"SED"},{"nombreAdms":"04_51_TECNOVA","nombreSisdat":"04_51_TECNOVA","tipo":"SED"},{"nombreAdms":"04_52_KIMBERLEY-CLARK","nombreSisdat":"04_52_KIMBERLEY-CLARK","tipo":"SED"},{"nombreAdms":"04_53_NESTLE","nombreSisdat":"04_53_NESTLE","tipo":"SED"},{"nombreAdms":"04_54_CRIDESA","nombreSisdat":"04_54_CRIDESA","tipo":"SED"},{"nombreAdms":"04_55_CentralPlayas","nombreSisdat":"S/E Playas - Central Playas","tipo":"ALIMENTADOR"},{"nombreAdms":"04_55_CiudadelaVictoria","nombreSisdat":"S/E Playas - Ciudadela Victoria","tipo":"ALIMENTADOR"},{"nombreAdms":"04_55_Engabao","nombreSisdat":"S/E Playas - Engabao","tipo":"ALIMENTADOR"},{"nombreAdms":"04_55_InterconexionPlayas","nombreSisdat":"S/E Playas - Interconexion Playas","tipo":"ALIMENTADOR"},{"nombreAdms":"04_55_PLAYAS","nombreSisdat":"04_55_PLAYAS","tipo":"SED"},{"nombreAdms":"04_55_SectorCentro","nombreSisdat":"S/E Playas - Sector Centro","tipo":"ALIMENTADOR"},{"nombreAdms":"04_56_Interagua","nombreSisdat":"","tipo":"ALIMENTADOR"},{"nombreAdms":"04_56_Progreso","nombreSisdat":"S/E San Lorenzo Del Mate - Progreso","tipo":"ALIMENTADOR"},{"nombreAdms":"04_56_SabanaGrande","nombreSisdat":"S/E San Lorenzo Del Mate - Sabana Grande ","tipo":"ALIMENTADOR"},{"nombreAdms":"04_56_SAN LORENZO DEL MATE","nombreSisdat":"04_56_SAN LORENZO DEL MATE","tipo":"SED"},{"nombreAdms":"04_56_SanJuan","nombreSisdat":"S/E San Lorenzo Del Mate - San Juan","tipo":"ALIMENTADOR"},{"nombreAdms":"04_57_CedegeCerecita","nombreSisdat":"S/E Cerecita - CEDEGE-Cerecita","tipo":"ALIMENTADOR"},{"nombreAdms":"04_57_CedegeDaular","nombreSisdat":"S/E Cerecita - CEDEGE-Daular","tipo":"ALIMENTADOR"},{"nombreAdms":"04_57_CERECITA","nombreSisdat":"04_57_CERECITA","tipo":"SED"},{"nombreAdms":"04_57_CerecitaEmepe","nombreSisdat":"S/E Cerecita - Cerecita-EMEPE","tipo":"ALIMENTADOR"},{"nombreAdms":"04_57_Consuelo","nombreSisdat":"S/E Cerecita - Consuelo","tipo":"ALIMENTADOR"},{"nombreAdms":"04_58_Camposorja","nombreSisdat":"S/E Posorja - Camposorja","tipo":"ALIMENTADOR"},{"nombreAdms":"04_58_Inpesca","nombreSisdat":"S/E Posorja - INPESCA","tipo":"ALIMENTADOR"},{"nombreAdms":"04_58_Jambeli","nombreSisdat":"S/E Posorja - Jambeli","tipo":"ALIMENTADOR"},{"nombreAdms":"04_58_Posorja","nombreSisdat":"S/E Posorja - Posorja","tipo":"ALIMENTADOR"},{"nombreAdms":"04_58_POSORJA","nombreSisdat":"04_58_POSORJA","tipo":"SED"},{"nombreAdms":"04_58_Real","nombreSisdat":"S/E Posorja - Real","tipo":"ALIMENTADOR"},{"nombreAdms":"04_59_ARCA COCA COLA","nombreSisdat":"04_59_ARCA COCA COLA","tipo":"SED"},{"nombreAdms":"04_60_INTERHOSPITAL","nombreSisdat":"04_60_INTERHOSPITAL","tipo":"SED"},{"nombreAdms":"04_62_NAPORTEC","nombreSisdat":"04_62_NAPORTEC","tipo":"SED"},{"nombreAdms":"04_63_EBAR INTERAGUA","nombreSisdat":"04_63_EBAR INTERAGUA","tipo":"SED"},{"nombreAdms":"04_64_AGRICOMINSA","nombreSisdat":"04_64_AGRICOMINSA","tipo":"SED"},{"nombreAdms":"04_65_DIFARE","nombreSisdat":"04_65_DIFARE","tipo":"SED"},{"nombreAdms":"04_69_ROSADO CARNICOS","nombreSisdat":"04_69_ROSADO CARNICOS","tipo":"SED"},{"nombreAdms":"04_74_AEROPUERTO-TT","nombreSisdat":"04_74_AEROPUERTO-TT","tipo":"SED"},{"nombreAdms":"04_76_PTAR ESCLUSAS","nombreSisdat":"04_76_PTAR ESCLUSAS","tipo":"SED"},{"nombreAdms":"04_80_QUIMPAC","nombreSisdat":"04_80_QUIMPAC","tipo":"SED"},{"nombreAdms":"04_81_SONGA","nombreSisdat":"04_81_SONGA","tipo":"SED"},{"nombreAdms":"04_82_COFIMAR","nombreSisdat":"04_82_COFIMAR","tipo":"SED"},{"nombreAdms":"04_83_RIO CENTRO CEIBOS","nombreSisdat":"04_83_RIO CENTRO CEIBOS","tipo":"SED"},{"nombreAdms":"04_88_Cerro Azul","nombreSisdat":"CERRO AZUL","tipo":"ALIMENTADOR"},{"nombreAdms":"04_88_San Eduardo","nombreSisdat":"SAN EDUARDO","tipo":"ALIMENTADOR"},{"nombreAdms":"04_88_Tres Bocas","nombreSisdat":"TRES BOCAS","tipo":"ALIMENTADOR"},{"nombreAdms":"04_88_TRES BOCAS","nombreSisdat":"04_88_TRES BOCAS","tipo":"SED"},{"nombreAdms":"04_CEIBOS TRANSELECTRIC","nombreSisdat":"04_CEIBOS TRANSELECTRIC","tipo":"SED"},{"nombreAdms":"04_P001_CONTECON","nombreSisdat":"04_P001_CONTECON","tipo":"SED"},{"nombreAdms":"04_P002_INCABLE","nombreSisdat":"04_P002_INCABLE","tipo":"SED"},{"nombreAdms":"04_P003_MALL EL FORTIN","nombreSisdat":"04_P003_MALL EL FORTIN","tipo":"SED"},{"nombreAdms":"04_P005_PENITENCIARIA","nombreSisdat":"04_P005_PENITENCIARIA","tipo":"SED"},{"nombreAdms":"04_P006_CITY MALL","nombreSisdat":"04_P006_CITY MALL","tipo":"SED"},{"nombreAdms":"04_P007_FADESA","nombreSisdat":"04_P007_FADESA","tipo":"SED"},{"nombreAdms":"04_P008_MOLINOS CHAMPION","nombreSisdat":"04_P008_MOLINOS CHAMPION","tipo":"SED"},{"nombreAdms":"04_P009_PROMAPLAST","nombreSisdat":"04_P009_PROMAPLAST","tipo":"SED"},{"nombreAdms":"04_P010_TONI","nombreSisdat":"04_P010_TONI","tipo":"SED"},{"nombreAdms":"04_P011_BASE NAVAL","nombreSisdat":"04_P011_BASE NAVAL","tipo":"SED"},{"nombreAdms":"04_P013_IPAC","nombreSisdat":"04_P013_IPAC","tipo":"SED"},{"nombreAdms":"04_P014_LATIENVASES","nombreSisdat":"04_P014_LATIENVASES","tipo":"SED"},{"nombreAdms":"04_P015_ECUAKAO","nombreSisdat":"04_P015_ECUAKAO","tipo":"SED"},{"nombreAdms":"04_P016_CNT","nombreSisdat":"04_P016_CNT","tipo":"SED"},{"nombreAdms":"04_P017_HOLCIM","nombreSisdat":"04_P017_HOLCIM","tipo":"SED"},{"nombreAdms":"04_P018_HOSPITAL GUAYAQUIL","nombreSisdat":"04_P018_HOSPITAL GUAYAQUIL","tipo":"SED"},{"nombreAdms":"04_P019_LINDE","nombreSisdat":"04_P019_LINDE","tipo":"SED"},{"nombreAdms":"04_P020_MATERNIDAD PAULSON","nombreSisdat":"04_P020_MATERNIDAD PAULSON","tipo":"SED"},{"nombreAdms":"04_P021_MOLINERA","nombreSisdat":"04_P021_MOLINERA","tipo":"SED"},{"nombreAdms":"04_P022_PARQUE SAMANES","nombreSisdat":"04_P022_PARQUE SAMANES","tipo":"SED"},{"nombreAdms":"04_P023_PETROCOMERCIAL","nombreSisdat":"04_P023_PETROCOMERCIAL","tipo":"SED"},{"nombreAdms":"04_P024_UNILEVER JABONERIA","nombreSisdat":"04_P024_UNILEVER JABONERIA","tipo":"SED"},{"nombreAdms":"04_P025_UNILEVER PINGUINO","nombreSisdat":"04_P025_UNILEVER PINGUINO","tipo":"SED"},{"nombreAdms":"04_P026_AEROPUERTO","nombreSisdat":"04_P026_AEROPUERTO","tipo":"SED"},{"nombreAdms":"04_P027_TERMINAL TERRESTRE","nombreSisdat":"04_P027_TERMINAL TERRESTRE","tipo":"SED"},{"nombreAdms":"04_P028_LA FAVORITA","nombreSisdat":"04_P028_LA FAVORITA","tipo":"SED"},{"nombreAdms":"04_P029_RIOCENTRO SUR","nombreSisdat":"04_P029_RIOCENTRO SUR","tipo":"SED"},{"nombreAdms":"04_P030_NESTLE (LA UNIVERSAL)","nombreSisdat":"04_P030_NESTLE (LA UNIVERSAL)","tipo":"SED"},{"nombreAdms":"04_P031_CALIZAS HUAYCO","nombreSisdat":"04_P031_CALIZAS HUAYCO","tipo":"SED"},{"nombreAdms":"04_PM BIEN PUBLICO","nombreSisdat":"04_PM BIEN PUBLICO","tipo":"SED"},{"nombreAdms":"04_PM MAPASINGUE","nombreSisdat":"04_PM MAPASINGUE","tipo":"SED"},{"nombreAdms":"04_ST_00_ALVARO TINAJERO - CHAMBERS","nombreSisdat":"04_ST_00_ALVARO TINAJERO - CHAMBERS","tipo":"LST"},{"nombreAdms":"04_ST_00_ALVARO TINAJERO - PORTETE","nombreSisdat":"04_ST_00_ALVARO TINAJERO - PORTETE","tipo":"LST"},{"nombreAdms":"04_ST_00_ANIBAL SANTOS - CEIBOS","nombreSisdat":"04_ST_00_ANIBAL SANTOS - CEIBOS","tipo":"LST"},{"nombreAdms":"04_ST_00_ANIBAL SANTOS - CEMENTO","nombreSisdat":"04_ST_00_ANIBAL SANTOS - CEMENTO","tipo":"LST"},{"nombreAdms":"04_ST_00_ANIBAL SANTOS - GARAY","nombreSisdat":"04_ST_00_ANIBAL SANTOS - GARAY","tipo":"LST"},{"nombreAdms":"04_ST_00_ANIBAL SANTOS - NORTE","nombreSisdat":"04_ST_00_ANIBAL SANTOS - NORTE","tipo":"LST"},{"nombreAdms":"04_ST_00_ANIBAL SANTOS - PROSPERINA","nombreSisdat":"04_ST_00_ANIBAL SANTOS - PROSPERINA","tipo":"LST"},{"nombreAdms":"04_ST_00_ANIBAL SANTOS - SUR","nombreSisdat":"04_ST_00_ANIBAL SANTOS - SUR","tipo":"LST"},{"nombreAdms":"04_ST_00_CARAGUAY - CARAGUAY 1","nombreSisdat":"04_ST_00_CARAGUAY - CARAGUAY 1","tipo":"LST"},{"nombreAdms":"04_ST_00_CARAGUAY - CARAGUAY 3","nombreSisdat":"04_ST_00_CARAGUAY - CARAGUAY 3","tipo":"LST"},{"nombreAdms":"04_ST_00_CARAGUAY - CARAGUAY 4","nombreSisdat":"04_ST_00_CARAGUAY - CARAGUAY 4","tipo":"LST"},{"nombreAdms":"04_ST_00_ELECTROQUIL - CHONGÓN","nombreSisdat":"04_ST_00_ELECTROQUIL - CHONGÓN","tipo":"LST"},{"nombreAdms":"04_ST_00_ELECTROQUIL - HOLCIM","nombreSisdat":"04_ST_00_ELECTROQUIL - HOLCIM","tipo":"LST"},{"nombreAdms":"04_ST_00_ESCLUSAS - ESCLUSAS 2","nombreSisdat":"04_ST_00_ESCLUSAS - ESCLUSAS 2","tipo":"LST"},{"nombreAdms":"04_ST_00_ESCLUSAS - ESCLUSAS 3","nombreSisdat":"04_ST_00_ESCLUSAS - ESCLUSAS 3","tipo":"LST"},{"nombreAdms":"04_ST_00_NUEVA PROSPERINA - PROSPERINA 1","nombreSisdat":"04_ST_00_NUEVA PROSPERINA - PROSPERINA 1","tipo":"LST"},{"nombreAdms":"04_ST_00_NUEVA PROSPERINA - PROSPERINA 2","nombreSisdat":"04_ST_00_NUEVA PROSPERINA - PROSPERINA 2","tipo":"LST"},{"nombreAdms":"04_ST_00_NUEVA PROSPERINA - PROSPERINA 3","nombreSisdat":"04_ST_00_NUEVA PROSPERINA - PROSPERINA 3","tipo":"LST"},{"nombreAdms":"04_ST_00_PASCUALES - CERVECERÍA","nombreSisdat":"04_ST_00_PASCUALES - CERVECERÍA","tipo":"LST"},{"nombreAdms":"04_ST_00_PASCUALES - QUINTO GUAYAS","nombreSisdat":"04_ST_00_PASCUALES - QUINTO GUAYAS","tipo":"LST"},{"nombreAdms":"04_ST_00_PASCUALES - VERGELES","nombreSisdat":"04_ST_00_PASCUALES - VERGELES","tipo":"LST"},{"nombreAdms":"04_ST_00_POLICENTRO - CRISTAVID","nombreSisdat":"04_ST_00_POLICENTRO - CRISTAVID","tipo":"LST"},{"nombreAdms":"04_ST_00_POLICENTRO - F. ORELLANA","nombreSisdat":"04_ST_00_POLICENTRO - F. ORELLANA","tipo":"LST"},{"nombreAdms":"04_ST_00_POLICENTRO - PIEDRAHITA","nombreSisdat":"04_ST_00_POLICENTRO - PIEDRAHITA","tipo":"LST"},{"nombreAdms":"04_ST_00_POLICENTRO - TRES CERRITOS","nombreSisdat":"04_ST_00_POLICENTRO - TRES CERRITOS","tipo":"LST"},{"nombreAdms":"04_ST_00_POSORJA - PLAYAS G","nombreSisdat":"04_ST_00_POSORJA - PLAYAS G","tipo":"LST"},{"nombreAdms":"04_ST_00_POSORJA - POSORJA G","nombreSisdat":"04_ST_00_POSORJA - POSORJA G","tipo":"LST"},{"nombreAdms":"04_ST_00_POSORJA - SAN LORENZO DEL MATE G","nombreSisdat":"04_ST_00_POSORJA - SAN LORENZO DEL MATE G","tipo":"LST"},{"nombreAdms":"04_ST_00_TRINITARIA - GUASMO","nombreSisdat":"04_ST_00_TRINITARIA - GUASMO","tipo":"LST"},{"nombreAdms":"04_ST_00_TRINITARIA - PADRE CANALS","nombreSisdat":"04_ST_00_TRINITARIA - PADRE CANALS","tipo":"LST"},{"nombreAdms":"04_ST_00_TRINITARIA - PRADERA","nombreSisdat":"04_ST_00_TRINITARIA - PRADERA","tipo":"LST"},{"nombreAdms":"04_ST_00_TRINITARIA - UNIVERSAL","nombreSisdat":"04_ST_00_TRINITARIA - UNIVERSAL","tipo":"LST"}]};
+
+const SUBCAT_LABELS = {
+  'LST': 'Subtransmisión — Línea de subtransmisión (LST)',
+  'SED': 'Subtransmisión — Subestación de Distribución (SED)',
+  'RP-': 'Distribución — Red primaria (RP-)',
+  'RS-': 'Distribución — Red secundaria (RS-)',
+  'RPT': 'Distribución — Transformador de Distribución (RPT)',
+};
+const SUBCAT_ORDER = ['LST','SED','RP-','RS-','RPT'];
+const TOPO_TYPE_FOR = { 'LST':'LST', 'SED':'SED', 'RP-':'ALIMENTADOR', 'RS-':'ALIMENTADOR', 'RPT':'ALIMENTADOR' };
+const TIPO_LABEL = { 'LST':'línea de subtransmisión', 'SED':'subestación', 'RP-':'alimentador', 'RS-':'alimentador', 'RPT':'alimentador' };
+
+const subcatSel = document.getElementById('subcat');
+const elemInput = document.getElementById('elemInput');
+const elemList = document.getElementById('elemList');
+const elemStatus = document.getElementById('elemStatus');
+const actividadSel = document.getElementById('actividad');
+const companyExtra = document.getElementById('companyExtra');
+const respTelefono = document.getElementById('respTelefono');
+const respNombre = document.getElementById('respNombre');
+const purposeExtra = document.getElementById('purposeExtra');
+const regenPurposeBtn = document.getElementById('regenPurposeBtn');
+const rtelHoras = document.getElementById('rtelHoras');
+const descripcion = document.getElementById('descripcion');
+const areaSel = document.getElementById('areaSel');
+const outCompany = document.getElementById('outCompany');
+const outPhone = document.getElementById('outPhone');
+const outPurpose = document.getElementById('outPurpose');
+const outDetails = document.getElementById('outDetails');
+const checklist = document.getElementById('checklist');
+
+let selectedElemento = null; // {nombreAdms, nombreSisdat, tipo}
+let purposeExtraAuto = true; // true mientras el resumen de Purpose no ha sido editado a mano
+
+function normalize(s){
+  const diacritics = new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g');
+  return (s||'').toString().normalize('NFD').replace(diacritics, '').toLowerCase();
+}
+
+function populateSubcat(){
+  subcatSel.innerHTML = '';
+  SUBCAT_ORDER.forEach(cod3=>{
+    const opt = document.createElement('option');
+    opt.value = cod3;
+    opt.textContent = SUBCAT_LABELS[cod3];
+    subcatSel.appendChild(opt);
+  });
+}
+
+function populateActividades(cod3){
+  actividadSel.innerHTML = '';
+  const acts = DATA.catalog.filter(c=>c.cod3===cod3);
+  acts.forEach(a=>{
+    const opt = document.createElement('option');
+    opt.value = a.cod4;
+    opt.dataset.actividad = a.actividad;
+    opt.textContent = a.actividad + '  (' + cod3 + '_' + a.cod4 + ')';
+    actividadSel.appendChild(opt);
+  });
+}
+
+function currentTopoOptions(){
+  const cod3 = subcatSel.value;
+  const tipo = TOPO_TYPE_FOR[cod3];
+  return DATA.topologia.filter(t=>t.tipo===tipo);
+}
+
+function renderElemList(filterText){
+  const q = normalize(filterText);
+  const options = currentTopoOptions();
+  const matches = q ? options.filter(o=> normalize(o.nombreAdms).includes(q) || normalize(o.nombreSisdat).includes(q)) : options;
+  elemList.innerHTML = '';
+  if(matches.length===0){
+    const div = document.createElement('div');
+    div.className = 'combo-empty';
+    div.textContent = 'Sin coincidencias en la topología ADMS para esta categoría.';
+    elemList.appendChild(div);
+    elemList.classList.add('open');
+    return;
+  }
+  matches.slice(0,150).forEach(o=>{
+    const div = document.createElement('div');
+    div.className = 'combo-item';
+    const adms = document.createElement('div');
+    adms.className = 'adms';
+    adms.innerHTML = highlight(o.nombreAdms, filterText);
+    const sisdat = document.createElement('div');
+    sisdat.className = 'sisdat';
+    sisdat.textContent = o.nombreSisdat && o.nombreSisdat!==o.nombreAdms ? o.nombreSisdat : '';
+    div.appendChild(adms);
+    if(sisdat.textContent) div.appendChild(sisdat);
+    div.addEventListener('mousedown', (e)=>{
+      e.preventDefault();
+      selectElemento(o);
+    });
+    elemList.appendChild(div);
+  });
+  elemList.classList.add('open');
+}
+
+function highlight(text, q){
+  if(!q) return escapeHtml(text);
+  const nq = normalize(q);
+  const nt = normalize(text);
+  const idx = nt.indexOf(nq);
+  if(idx===-1) return escapeHtml(text);
+  return escapeHtml(text.slice(0,idx)) + '<mark>' + escapeHtml(text.slice(idx, idx+q.length)) + '</mark>' + escapeHtml(text.slice(idx+q.length));
+}
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function selectElemento(o){
+  selectedElemento = o;
+  elemInput.value = o.nombreAdms;
+  elemList.classList.remove('open');
+  updateElemStatus();
+  recompute();
+}
+
+function updateElemStatus(){
+  if(selectedElemento && selectedElemento.nombreAdms === elemInput.value){
+    elemStatus.className = 'status-line ok';
+    elemStatus.innerHTML = '<span class="dot"></span><span>Válido — existe en la topología ADMS (' + selectedElemento.tipo + ')</span>';
+  } else if(elemInput.value.trim()===''){
+    elemStatus.className = 'status-line idle';
+    elemStatus.innerHTML = '<span class="dot"></span><span>Seleccione un elemento de la lista</span>';
+    selectedElemento = null;
+  } else {
+    elemStatus.className = 'status-line bad';
+    elemStatus.innerHTML = '<span class="dot"></span><span>No coincide con ningún elemento homologado — elija una opción de la lista</span>';
+    selectedElemento = null;
+  }
+}
+
+function computeResumen(){
+  if(!selectedElemento) return '';
+  const cActEl = actividadSel.selectedOptions[0];
+  if(!cActEl) return '';
+  const actividadTexto = cActEl.dataset.actividad || cActEl.textContent;
+  const tipoLabel = TIPO_LABEL[subcatSel.value] || 'elemento';
+  return actividadTexto + ' en ' + tipoLabel + ' ' + selectedElemento.nombreAdms;
+}
+
+function formatHoras(v){
+  let n = parseFloat((v||'0').toString().replace(',','.'));
+  if(isNaN(n) || n<0) n = 0;
+  if(n>9.9) n = 9.9;
+  return n.toFixed(1).replace('.', ',');
+}
+
+function recompute(){
+  const cod3 = subcatSel.value;
+  const cActEl = actividadSel.selectedOptions[0];
+  const cod4 = cActEl ? cActEl.value : '';
+
+  // Company
+  if(selectedElemento){
+    let company = selectedElemento.nombreAdms;
+    if(companyExtra.value.trim()) company += ' ' + companyExtra.value.trim();
+    outCompany.textContent = company;
+    outCompany.classList.remove('empty');
+  } else {
+    outCompany.textContent = 'Seleccione un elemento…';
+    outCompany.classList.add('empty');
+  }
+
+  // Phone Number
+  const tel = respTelefono.value.trim();
+  const nombreResp = respNombre.value.trim();
+  if(tel || nombreResp){
+    outPhone.textContent = (tel + ' ' + nombreResp).trim();
+    outPhone.classList.remove('empty');
+  } else {
+    outPhone.textContent = 'Ingrese teléfono y nombre del responsable…';
+    outPhone.classList.add('empty');
+  }
+
+  // Purpose
+  const area = areaSel.value;
+  if(purposeExtraAuto){
+    purposeExtra.value = computeResumen();
+  }
+  if(cod3 && cod4){
+    let purpose = cod3 + '_' + cod4;
+    if(purposeExtra.value.trim()) purpose += ' ' + purposeExtra.value.trim();
+    if(area) purpose += ' Area: ' + area;
+    outPurpose.textContent = purpose;
+    outPurpose.classList.remove('empty');
+  } else {
+    outPurpose.textContent = 'Seleccione una actividad…';
+    outPurpose.classList.add('empty');
+  }
+
+  // Details
+  const horas = formatHoras(rtelHoras.value);
+  const desc = descripcion.value.trim();
+  if(desc){
+    outDetails.textContent = '1.RTEL_' + horas + '\n2.' + desc;
+    outDetails.classList.remove('empty');
+  } else {
+    outDetails.textContent = 'Complete la descripción…';
+    outDetails.classList.add('empty');
+  }
+
+  renderChecklist(desc, horas, tel, nombreResp, area);
+}
+
+function renderChecklist(desc, horas, tel, nombreResp, area){
+  const items = [
+    { ok: !!selectedElemento, label: 'Elemento válido de la topología ADMS' },
+    { ok: !!(actividadSel.value), label: 'Actividad seleccionada' },
+    { ok: !!area, label: 'Área del encargado seleccionada' },
+    { ok: /^\d{7,10}$/.test(tel) && nombreResp.length>0, label: 'Teléfono y nombre del responsable completos' },
+    { ok: desc.length>0, label: 'Descripción del trabajo completada' },
+    { ok: /^\d,\d$/.test(horas), label: 'Formato de horas RTEL correcto (X,X)' },
+  ];
+  checklist.innerHTML = '';
+  items.forEach(it=>{
+    const div = document.createElement('div');
+    div.className = 'check-item ' + (it.ok?'pass':'fail');
+    div.innerHTML = '<svg class="ico" viewBox="0 0 20 20" fill="none">' +
+      (it.ok
+        ? '<path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+        : '<circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.6" fill="none"/>')
+      + '</svg><span>' + it.label + '</span>';
+    checklist.appendChild(div);
+  });
+}
+
+subcatSel.addEventListener('change', ()=>{
+  populateActividades(subcatSel.value);
+  elemInput.value = '';
+  selectedElemento = null;
+  updateElemStatus();
+  recompute();
+});
+
+elemInput.addEventListener('input', ()=>{
+  renderElemList(elemInput.value);
+  updateElemStatus();
+  recompute();
+});
+elemInput.addEventListener('focus', ()=> renderElemList(elemInput.value));
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('.combo')) elemList.classList.remove('open');
+});
+
+[actividadSel, companyExtra, rtelHoras, descripcion, respTelefono, respNombre, areaSel].forEach(el=>{
+  el.addEventListener('input', recompute);
+  el.addEventListener('change', recompute);
+});
+
+purposeExtra.addEventListener('input', ()=>{
+  purposeExtraAuto = false;
+  recompute();
+});
+
+regenPurposeBtn.addEventListener('click', ()=>{
+  purposeExtraAuto = true;
+  recompute();
+});
+
+document.querySelectorAll('.copy-btn').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    const target = document.getElementById(btn.dataset.copy);
+    const text = target.textContent;
+    try{
+      await navigator.clipboard.writeText(text);
+    }catch(e){
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+    }
+    btn.classList.add('copied');
+    const orig = btn.textContent;
+    btn.textContent = 'Copiado ✓';
+    setTimeout(()=>{ btn.classList.remove('copied'); btn.textContent = orig; }, 1600);
+  });
+});
+
+// init
+populateSubcat();
+populateActividades(subcatSel.value);
+recompute();
+
+// decorative skyline (transmission towers + substation silhouette)
+document.getElementById('skyline').innerHTML = `
+<svg viewBox="0 0 1200 260" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0e8fb8" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#0e8fb8" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#3f6a8a" stroke-width="1.4" fill="none" opacity="0.5">
+    ${[80,340,600,860,1120].map(x=>`
+      <g>
+        <line x1="${x}" y1="60" x2="${x}" y2="240"/>
+        <line x1="${x-45}" y1="80" x2="${x+45}" y2="80"/>
+        <line x1="${x-32}" y1="110" x2="${x+32}" y2="110"/>
+        <line x1="${x-45}" y1="80" x2="${x}" y2="60"/>
+        <line x1="${x+45}" y1="80" x2="${x}" y2="60"/>
+        <line x1="${x-70}" y1="80" x2="${x-230}" y2="130"/>
+        <line x1="${x+70}" y1="80" x2="${x+230}" y2="130"/>
+      </g>`).join('')}
+  </g>
+  <g stroke="#0e8fb8" stroke-width="1" fill="none" opacity="0.25">
+    <line x1="0" y1="132" x2="1200" y2="132"/>
+    <line x1="0" y1="112" x2="1200" y2="112"/>
+  </g>
+  <rect x="0" y="150" width="1200" height="110" fill="url(#fade)"/>
+</svg>`;
+
+// ambient sparks
+for(let i=0;i<10;i++){
+  const s = document.createElement('div');
+  s.className = 'spark';
+  s.style.left = (5+Math.random()*90)+'vw';
+  s.style.top = (10+Math.random()*70)+'vh';
+  s.style.animationDelay = (Math.random()*3)+'s';
+  document.body.appendChild(s);
+}
+</script>
+</body>
+</html>
